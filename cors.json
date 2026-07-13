@@ -1,0 +1,12 @@
+[
+	{
+		"origin": [
+			"http://localhost:*",
+			"https://alamode-3f621.firebaseapp.com"
+		],
+		"method": [
+			"GET"
+		],
+		"maxAgeSeconds": 3600
+	}
+]

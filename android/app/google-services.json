@@ -1,0 +1,48 @@
+{
+	"project_info": {
+		"project_number": "331755052940",
+		"project_id": "alamode-3f621",
+		"storage_bucket": "alamode-3f621.appspot.com"
+	},
+	"client": [
+		{
+			"client_info": {
+				"mobilesdk_app_id": "1:331755052940:android:e5beb82d7de996bd1dc0a9",
+				"android_client_info": {
+					"package_name": "ala.mode"
+				}
+			},
+			"oauth_client": [],
+			"api_key": [
+				{
+					"current_key": "AIzaSyCiYbcS5iJ-JK_ei954nnNwxMNWlnM1mbI"
+				}
+			],
+			"services": {
+				"appinvite_service": {
+					"other_platform_oauth_client": []
+				}
+			}
+		},
+		{
+			"client_info": {
+				"mobilesdk_app_id": "1:331755052940:android:10b319d1bf74f6cb1dc0a9",
+				"android_client_info": {
+					"package_name": "com.example.alamode"
+				}
+			},
+			"oauth_client": [],
+			"api_key": [
+				{
+					"current_key": "AIzaSyCiYbcS5iJ-JK_ei954nnNwxMNWlnM1mbI"
+				}
+			],
+			"services": {
+				"appinvite_service": {
+					"other_platform_oauth_client": []
+				}
+			}
+		}
+	],
+	"configuration_version": "1"
+}
