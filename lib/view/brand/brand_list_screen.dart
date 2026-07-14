@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:admin_app/main.dart';
 import 'package:admin_app/services/admin_service.dart';
 import 'package:admin_app/view/brand/brand_form_screen.dart';
 
@@ -66,10 +67,30 @@ class _BrandListScreenState extends State<BrandListScreen> {
                         itemCount: _brands.length,
                         itemBuilder: (context, index) {
                           final brand = _brands[index];
+                          final needsCompany = (brand['brand_company'] as String?)?.trim().isEmpty != false;
                           return ListTile(
-                            title: Text(brand['brand_name'] ?? ''),
+                            title: Row(
+                              children: [
+                                Flexible(child: Text(brand['brand_name'] ?? '')),
+                                if (needsCompany) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.errorColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.errorColor.withOpacity(0.4)),
+                                    ),
+                                    child: const Text(
+                                      '要入力',
+                                      style: TextStyle(fontSize: 10, color: AppColors.errorColor, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                             subtitle: Text(
-                              brand['brand_description'] ?? '',
+                              brand['brand_company'] ?? '',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

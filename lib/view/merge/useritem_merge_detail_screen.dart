@@ -69,6 +69,7 @@ class _UseritemMergeDetailScreenState extends State<UseritemMergeDetailScreen> {
       MaterialPageRoute(
         builder: (context) => ItemFormScreen(
           initialItem: initialItem,
+          initialBrandName: _merged['useritem_brand'] as String?,
           promoteFromUseritemIds: _useritemIds,
         ),
       ),

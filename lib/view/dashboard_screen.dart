@@ -25,22 +25,22 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _DashboardTile(
-            icon: Icons.storefront_outlined,
-            title: 'ブランド管理',
-            subtitle: 'brandマスタの作成・編集・削除',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const BrandListScreen()),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _DashboardTile(
             icon: Icons.inventory_2_outlined,
             title: '商品管理',
             subtitle: 'itemマスタの作成・編集・削除',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ItemListScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DashboardTile(
+            icon: Icons.storefront_outlined,
+            title: 'ブランド管理',
+            subtitle: 'brandマスタの作成・編集・削除',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const BrandListScreen()),
             ),
           ),
           const SizedBox(height: 12),

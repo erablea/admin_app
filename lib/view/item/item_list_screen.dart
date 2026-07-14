@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:admin_app/services/admin_service.dart';
 import 'package:admin_app/view/item/item_form_screen.dart';
+import 'package:admin_app/widgets/common_widgets.dart';
 
 class ItemListScreen extends StatefulWidget {
   const ItemListScreen({super.key});
@@ -69,7 +70,7 @@ class _ItemListScreenState extends State<ItemListScreen> {
                           return ListTile(
                             title: Text(item['item_name'] ?? ''),
                             subtitle: Text(
-                              '${item['item_category'] ?? ''} ／ ¥${item['item_price'] ?? 0}',
+                              '${item['item_category'] ?? ''} ／ ¥${CommonWidgets.formatCurrency(item['item_price'] ?? 0)}',
                             ),
                             onTap: () => _openForm(item),
                           );

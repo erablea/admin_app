@@ -8,9 +8,13 @@ class AppColors {
   static const Color primaryColor = Color(0xFF1C6ECD);
   static const Color blackDark = Color(0xFF1A1A1A);
   static const Color blackLight = Color(0xFF666666);
+  static const Color greyDark = Color(0xFFCCCCCC);
   static const Color greyMedium = Color(0xFFE6E6E6);
   static const Color greyLight = Color(0xFFF5F5F5);
   static const Color errorColor = Color(0xFFB9727C);
+  static const Color inputBorderColor = Color(0xFFB8B8B8);
+  static const Color cardBackground = Colors.white;
+  static const Color shadowColor = Color(0x1A000000);
 }
 
 void main() async {

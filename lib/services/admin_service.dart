@@ -51,6 +51,30 @@ class AdminService {
     await supabase.from('brand').delete().eq('brand_id', brandId);
   }
 
+  Future<Map<String, dynamic>?> getBrandById(String brandId) async {
+    return await supabase.from('brand').select().eq('brand_id', brandId).maybeSingle();
+  }
+
+  /// ブランド名の完全一致で既存brandを検索し、あればそのbrand_idを返す。
+  /// 無ければbrand_nameのみでbrandを新規作成する(brand_companyは空のまま、
+  /// ブランド管理側で空欄=要入力として扱われる)。
+  Future<String> getOrCreateBrandByName(String name) async {
+    final trimmed = name.trim();
+    final existing = await supabase
+        .from('brand')
+        .select('brand_id')
+        .eq('brand_name', trimmed)
+        .maybeSingle();
+    if (existing != null) return existing['brand_id'].toString();
+
+    final created = await supabase
+        .from('brand')
+        .insert({'brand_name': trimmed})
+        .select('brand_id')
+        .single();
+    return created['brand_id'].toString();
+  }
+
   // ---------------- item ----------------
 
   Future<List<Map<String, dynamic>>> getItems({String? search}) async {

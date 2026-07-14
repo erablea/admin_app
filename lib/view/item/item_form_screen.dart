@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:admin_app/main.dart';
 import 'package:admin_app/services/admin_service.dart';
-
-const List<String> kItemGenres = ['クッキー', 'ショコラ', '和菓子', '焼き菓子', 'ゼリー・プリン', 'その他'];
+import 'package:admin_app/widgets/common_widgets.dart';
 
 class ItemFormScreen extends StatefulWidget {
   final Map<String, dynamic>? initialItem;
+
+  /// useritemからの昇格時、ブランドIDは未確定なのでブランド名のヒントのみ渡す。
+  final String? initialBrandName;
 
   /// 統合作業(useritemの昇格)経由でこの画面が開かれた場合、
   /// 保存成功時にこれらのuseritem_idをuseritem_reviewへ記録する。
   /// useritem自体には一切書き込まない。
   final List<String>? promoteFromUseritemIds;
 
-  const ItemFormScreen({super.key, this.initialItem, this.promoteFromUseritemIds});
+  const ItemFormScreen({
+    super.key,
+    this.initialItem,
+    this.initialBrandName,
+    this.promoteFromUseritemIds,
+  });
 
   @override
   State<ItemFormScreen> createState() => _ItemFormScreenState();
@@ -21,36 +29,42 @@ class ItemFormScreen extends StatefulWidget {
 class _ItemFormScreenState extends State<ItemFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
+  late final TextEditingController _brandNameController;
   late final TextEditingController _priceController;
-  late final TextEditingController _urlController;
   late final TextEditingController _expiryController;
   late final TextEditingController _image1Controller;
   late final TextEditingController _image2Controller;
   late final TextEditingController _image3Controller;
+  late final TextEditingController _urlController;
+  late final TextEditingController _descriptionController;
 
   Set<String> _selectedGenres = {};
-  bool _individualWrapping = false;
-  bool _roomTemperature = false;
-  bool _online = false;
+  bool? _individualWrapping;
+  bool? _roomTemperature;
+  bool? _online;
 
-  List<Map<String, dynamic>> _brands = [];
-  String? _brandId;
-  bool _isLoadingBrands = true;
+  List<Map<String, dynamic>> _brandSuggestions = [];
   bool _isSaving = false;
 
-  bool get _isEditing => widget.initialItem != null;
+  // 統合作業(useritemの昇格)経由の場合はinitialItemがあってもitem_idを持たないため、
+  // その場合は新規作成として扱う。
+  bool get _isEditing => widget.initialItem != null && widget.initialItem!.containsKey('item_id');
 
   @override
   void initState() {
     super.initState();
     final item = widget.initialItem;
     _nameController = TextEditingController(text: item?['item_name'] ?? '');
-    _priceController = TextEditingController(text: item?['item_price']?.toString() ?? '');
-    _urlController = TextEditingController(text: item?['item_url'] ?? '');
+    _brandNameController = TextEditingController(text: widget.initialBrandName ?? '');
+    _priceController = TextEditingController(
+      text: item?['item_price'] != null ? CommonWidgets.formatCurrency(item!['item_price']) : '',
+    );
     _expiryController = TextEditingController(text: item?['item_expirydate']?.toString() ?? '');
     _image1Controller = TextEditingController(text: item?['item_imageurl1'] ?? '');
     _image2Controller = TextEditingController(text: item?['item_imageurl2'] ?? '');
     _image3Controller = TextEditingController(text: item?['item_imageurl3'] ?? '');
+    _urlController = TextEditingController(text: item?['item_url'] ?? '');
+    _descriptionController = TextEditingController(text: item?['item_description'] ?? '');
 
     final category = item?['item_category'] as String?;
     if (category != null && category.isNotEmpty) {
@@ -59,31 +73,42 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     _individualWrapping = _asBool(item?['item_individualwrapping']);
     _roomTemperature = _asBool(item?['item_roomtemperature']);
     _online = _asBool(item?['item_online']);
-    _brandId = item?['brand_id']?.toString();
 
-    _loadBrands();
+    _loadBrandSuggestions();
+    final brandId = item?['brand_id']?.toString();
+    if (brandId != null) _loadBrandName(brandId);
   }
 
-  bool _asBool(dynamic value) =>
-      value == true || value == 1 || value == '1' || value == 'yes';
+  bool? _asBool(dynamic value) {
+    if (value == null) return null;
+    if (value == true || value == 1 || value == '1' || value == 'yes') return true;
+    if (value == false || value == 0 || value == '0' || value == 'no') return false;
+    return null;
+  }
 
-  Future<void> _loadBrands() async {
+  Future<void> _loadBrandSuggestions() async {
     final brands = await AdminService.instance.getBrands();
-    setState(() {
-      _brands = brands;
-      _isLoadingBrands = false;
-    });
+    if (mounted) setState(() => _brandSuggestions = brands);
+  }
+
+  Future<void> _loadBrandName(String brandId) async {
+    final brand = await AdminService.instance.getBrandById(brandId);
+    if (mounted && brand != null) {
+      _brandNameController.text = brand['brand_name'] ?? '';
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _brandNameController.dispose();
     _priceController.dispose();
-    _urlController.dispose();
     _expiryController.dispose();
     _image1Controller.dispose();
     _image2Controller.dispose();
     _image3Controller.dispose();
+    _urlController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -91,11 +116,16 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
     try {
+      final brandName = _brandNameController.text.trim();
+      final brandId = brandName.isEmpty
+          ? null
+          : await AdminService.instance.getOrCreateBrandByName(brandName);
+
+      final rawPrice = _priceController.text.replaceAll(',', '');
       final data = {
         'item_name': _nameController.text.trim(),
         'item_category': _selectedGenres.join(','),
-        'item_price': int.tryParse(_priceController.text) ?? 0,
-        'item_url': _urlController.text.trim(),
+        'item_price': int.tryParse(rawPrice) ?? 0,
         'item_expirydate': int.tryParse(_expiryController.text),
         'item_individualwrapping': _individualWrapping,
         'item_roomtemperature': _roomTemperature,
@@ -103,7 +133,9 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
         'item_imageurl1': _image1Controller.text.trim().isEmpty ? null : _image1Controller.text.trim(),
         'item_imageurl2': _image2Controller.text.trim().isEmpty ? null : _image2Controller.text.trim(),
         'item_imageurl3': _image3Controller.text.trim().isEmpty ? null : _image3Controller.text.trim(),
-        'brand_id': _brandId,
+        'item_url': _urlController.text.trim(),
+        'item_description': _descriptionController.text.trim(),
+        'brand_id': brandId,
       };
 
       if (_isEditing) {
@@ -161,9 +193,17 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = _isEditing
+        ? '商品編集'
+        : (widget.promoteFromUseritemIds != null ? '商品として登録' : '商品新規作成');
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? '商品編集' : (widget.promoteFromUseritemIds != null ? '商品として登録' : '商品新規作成')),
+        title: Text(
+          title,
+          style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
+        elevation: 0,
         actions: [
           if (_isEditing)
             IconButton(icon: const Icon(Icons.delete_outline), onPressed: _delete),
@@ -176,107 +216,161 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: '商品名 *'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? '商品名を入力してください' : null,
-            ),
-            const SizedBox(height: 16),
-            _isLoadingBrands
-                ? const LinearProgressIndicator()
-                : DropdownButtonFormField<String>(
-                    value: _brands.any((b) => b['brand_id'].toString() == _brandId) ? _brandId : null,
-                    decoration: const InputDecoration(labelText: 'ブランド'),
-                    items: _brands
-                        .map((b) => DropdownMenuItem(
-                              value: b['brand_id'].toString(),
-                              child: Text(b['brand_name'] ?? ''),
-                            ))
-                        .toList(),
-                    onChanged: (value) => setState(() => _brandId = value),
-                  ),
-            const SizedBox(height: 16),
-            const Text('ジャンル', style: TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: kItemGenres.map((genre) {
-                final isSelected = _selectedGenres.contains(genre);
-                return FilterChip(
-                  label: Text(genre),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedGenres.add(genre);
-                      } else {
-                        _selectedGenres.remove(genre);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _priceController,
-              decoration: const InputDecoration(labelText: '価格（税込・円）'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _expiryController,
-              decoration: const InputDecoration(labelText: '賞味期限（日数）'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _urlController,
-              decoration: const InputDecoration(labelText: '購入URL'),
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('個包装'),
-              value: _individualWrapping,
-              onChanged: (v) => setState(() => _individualWrapping = v),
-            ),
-            SwitchListTile(
-              title: const Text('常温保存可能'),
-              value: _roomTemperature,
-              onChanged: (v) => setState(() => _roomTemperature = v),
-            ),
-            SwitchListTile(
-              title: const Text('オンライン購入可能'),
-              value: _online,
-              onChanged: (v) => setState(() => _online = v),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _image1Controller,
-              decoration: const InputDecoration(labelText: '画像URL 1'),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _image2Controller,
-              decoration: const InputDecoration(labelText: '画像URL 2'),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _image3Controller,
-              decoration: const InputDecoration(labelText: '画像URL 3'),
+              decoration: CommonWidgets.buildInputDecoration('商品名 *', context: context),
+              validator: (v) => (v == null || v.trim().isEmpty) ? '必須項目です' : null,
             ),
             const SizedBox(height: 24),
+            _buildBrandField(),
+            const SizedBox(height: 24),
+            CommonWidgets.buildGenreSelector(
+              context: context,
+              selectedGenres: _selectedGenres,
+              onSelectionChanged: (newSelection) => setState(() => _selectedGenres = newSelection),
+            ),
+            const SizedBox(height: 24),
+            CommonWidgets.buildOtherConditionSelector(
+              context: context,
+              individualWrapping: _individualWrapping,
+              roomTemperature: _roomTemperature,
+              online: _online,
+              onChanged: (w, r, o) => setState(() {
+                _individualWrapping = w;
+                _roomTemperature = r;
+                _online = o;
+              }),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _priceController,
+                    decoration: CommonWidgets.buildInputDecoration('金額', context: context),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      ThousandsSeparatorInputFormatter(),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Text('円', style: TextStyle(fontSize: 16, color: AppColors.blackLight, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _expiryController,
+              decoration: CommonWidgets.buildInputDecoration('賞味期限（日数）', context: context),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+            const SizedBox(height: 24),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('画像', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blackLight)),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _image1Controller,
+                  decoration: CommonWidgets.buildInputDecoration('画像URL 1', context: context),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _image2Controller,
+                  decoration: CommonWidgets.buildInputDecoration('画像URL 2', context: context),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _image3Controller,
+                  decoration: CommonWidgets.buildInputDecoration('画像URL 3', context: context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _urlController,
+              decoration: CommonWidgets.buildInputDecoration('購入URL', context: context),
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _descriptionController,
+              decoration: CommonWidgets.buildInputDecoration('商品説明', context: context),
+              minLines: 3,
+              maxLines: 5,
+            ),
+            const SizedBox(height: 30),
             ElevatedButton(
               onPressed: _isSaving ? null : _save,
+              style: ElevatedButton.styleFrom(
+                foregroundColor: AppColors.blackDark,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
               child: _isSaving
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('保存'),
+                  : const Text('保存', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBrandField() {
+    return Autocomplete<Map<String, dynamic>>(
+      initialValue: TextEditingValue(text: _brandNameController.text),
+      displayStringForOption: (option) => option['brand_name'] as String? ?? '',
+      optionsBuilder: (textEditingValue) {
+        if (textEditingValue.text.isEmpty) return const Iterable<Map<String, dynamic>>.empty();
+        final query = textEditingValue.text.toLowerCase();
+        return _brandSuggestions.where((b) => (b['brand_name'] as String? ?? '').toLowerCase().contains(query));
+      },
+      onSelected: (option) {
+        _brandNameController.text = option['brand_name'] as String? ?? '';
+      },
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        // AutocompleteのフィールドコントローラをFormの管理下のcontrollerと同期させる
+        controller.text = _brandNameController.text;
+        controller.addListener(() => _brandNameController.text = controller.text);
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: CommonWidgets.buildInputDecoration('ブランド・会社名 *', context: context),
+          validator: (v) => (v == null || v.trim().isEmpty) ? '必須項目です' : null,
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 400),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(option['brand_name'] as String? ?? ''),
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
