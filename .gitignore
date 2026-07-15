@@ -31,6 +31,14 @@ migrate_working_dir/
 .pub/
 /build/
 
+# 各環境のflutter pub getで再生成されるプラグイン登録ファイル(機種依存で
+# コンフリクトの原因になるためgit管理対象外にする)
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugins.cmake
+macos/Flutter/GeneratedPluginRegistrant.swift
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugins.cmake
+
 # Symbolication related
 app.*.symbols
 
