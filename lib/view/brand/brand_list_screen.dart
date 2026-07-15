@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:admin_app/main.dart';
 import 'package:admin_app/services/admin_service.dart';
 import 'package:admin_app/view/brand/brand_form_screen.dart';
+import 'package:admin_app/widgets/common_widgets.dart';
 
 class BrandListScreen extends StatefulWidget {
   const BrandListScreen({super.key});
@@ -63,30 +63,18 @@ class _BrandListScreenState extends State<BrandListScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _brands.isEmpty
                     ? const Center(child: Text('ブランドがありません'))
-                    : ListView.builder(
+                    : ListView.separated(
                         itemCount: _brands.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final brand = _brands[index];
-                          final needsCompany = (brand['brand_company'] as String?)?.trim().isEmpty != false;
+                          final percent = CommonWidgets.brandCompletionPercent(brand);
                           return ListTile(
                             title: Row(
                               children: [
                                 Flexible(child: Text(brand['brand_name'] ?? '')),
-                                if (needsCompany) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.errorColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: AppColors.errorColor.withOpacity(0.4)),
-                                    ),
-                                    child: const Text(
-                                      '要入力',
-                                      style: TextStyle(fontSize: 10, color: AppColors.errorColor, fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ],
+                                const SizedBox(width: 8),
+                                CommonWidgets.buildCompletionBadge(percent),
                               ],
                             ),
                             subtitle: Text(

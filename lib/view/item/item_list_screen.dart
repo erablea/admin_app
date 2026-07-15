@@ -63,15 +63,21 @@ class _ItemListScreenState extends State<ItemListScreen> {
                 ? const Center(child: CircularProgressIndicator())
                 : _items.isEmpty
                     ? const Center(child: Text('商品がありません'))
-                    : ListView.builder(
+                    : ListView.separated(
                         itemCount: _items.length,
+                        separatorBuilder: (context, index) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final item = _items[index];
+                          final percent = CommonWidgets.itemCompletionPercent(item);
                           return ListTile(
-                            title: Text(item['item_name'] ?? ''),
-                            subtitle: Text(
-                              '${item['item_category'] ?? ''} ／ ¥${CommonWidgets.formatCurrency(item['item_price'] ?? 0)}',
+                            title: Row(
+                              children: [
+                                Flexible(child: Text(item['item_name'] ?? '')),
+                                const SizedBox(width: 8),
+                                CommonWidgets.buildCompletionBadge(percent),
+                              ],
                             ),
+                            subtitle: Text('¥${CommonWidgets.formatCurrency(item['item_price'] ?? 0)}'),
                             onTap: () => _openForm(item),
                           );
                         },

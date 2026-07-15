@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:admin_app/main.dart';
 
 /// alamode_app(memo.dart)のデザインに合わせた共通ウィジェット群。
@@ -229,6 +230,110 @@ class CommonWidgets {
   static String formatCurrency(dynamic value) {
     if (value == null) return '';
     return NumberFormat('#,###').format(value);
+  }
+
+  /// itemの入力項目のうち、埋まっている割合(0〜100)。
+  /// 画像はimageurl1/2/3のうち1つでもあれば満たしているとみなす。
+  static int itemCompletionPercent(Map<String, dynamic> item) {
+    final checks = <bool>[
+      (item['item_name'] as String?)?.trim().isNotEmpty == true,
+      item['brand_id'] != null,
+      (item['item_category'] as String?)?.trim().isNotEmpty == true,
+      (item['item_price'] as num?) != null && (item['item_price'] as num) > 0,
+      item['item_expirydate'] != null,
+      item['item_individualwrapping'] != null,
+      item['item_roomtemperature'] != null,
+      item['item_online'] != null,
+      (item['item_imageurl1'] as String?)?.trim().isNotEmpty == true ||
+          (item['item_imageurl2'] as String?)?.trim().isNotEmpty == true ||
+          (item['item_imageurl3'] as String?)?.trim().isNotEmpty == true,
+      (item['item_url'] as String?)?.trim().isNotEmpty == true,
+      (item['item_description'] as String?)?.trim().isNotEmpty == true,
+    ];
+    final filled = checks.where((c) => c).length;
+    return (filled / checks.length * 100).round();
+  }
+
+  /// brandの入力項目のうち、埋まっている割合(0〜100)。
+  static int brandCompletionPercent(Map<String, dynamic> brand) {
+    final checks = <bool>[
+      (brand['brand_name'] as String?)?.trim().isNotEmpty == true,
+      (brand['brand_company'] as String?)?.trim().isNotEmpty == true,
+      (brand['brand_url'] as String?)?.trim().isNotEmpty == true,
+    ];
+    final filled = checks.where((c) => c).length;
+    return (filled / checks.length * 100).round();
+  }
+
+  static Widget buildCompletionBadge(int percent) {
+    final isComplete = percent >= 100;
+    final color = isComplete ? const Color(0xFF2E9E5B) : AppColors.errorColor;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        '$percent%',
+        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// URLを入力するTextFormField。値が入っている間、開いて確認できるボタンを表示する。
+class UrlInputField extends StatefulWidget {
+  final TextEditingController controller;
+  final String label;
+
+  const UrlInputField({super.key, required this.controller, required this.label});
+
+  @override
+  State<UrlInputField> createState() => _UrlInputFieldState();
+}
+
+class _UrlInputFieldState extends State<UrlInputField> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _onChanged() => setState(() {});
+
+  Future<void> _open() async {
+    final text = widget.controller.text.trim();
+    if (text.isEmpty) return;
+    final uri = Uri.tryParse(text);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasValue = widget.controller.text.trim().isNotEmpty;
+    return TextFormField(
+      controller: widget.controller,
+      decoration: CommonWidgets.buildInputDecoration(
+        widget.label,
+        context: context,
+        suffixIcon: hasValue
+            ? IconButton(
+                icon: const Icon(Icons.open_in_new),
+                tooltip: '開いて確認',
+                onPressed: _open,
+              )
+            : null,
+      ),
+    );
   }
 }
 

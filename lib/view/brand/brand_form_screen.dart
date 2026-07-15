@@ -16,22 +16,25 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _companyController;
+  late final TextEditingController _urlController;
   bool _isSaving = false;
 
   bool get _isEditing => widget.initialBrand != null;
-  bool get _needsCompany => _isEditing && (widget.initialBrand!['brand_company'] as String?)?.trim().isEmpty != false;
+  bool get _needsMoreInfo => _isEditing && CommonWidgets.brandCompletionPercent(widget.initialBrand!) < 100;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialBrand?['brand_name'] ?? '');
     _companyController = TextEditingController(text: widget.initialBrand?['brand_company'] ?? '');
+    _urlController = TextEditingController(text: widget.initialBrand?['brand_url'] ?? '');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _companyController.dispose();
+    _urlController.dispose();
     super.dispose();
   }
 
@@ -43,6 +46,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
         if (_isEditing) 'brand_id': widget.initialBrand!['brand_id'],
         'brand_name': _nameController.text.trim(),
         'brand_company': _companyController.text.trim(),
+        'brand_url': _urlController.text.trim(),
       };
       await AdminService.instance.upsertBrand(data);
       if (mounted) Navigator.pop(context, true);
@@ -102,7 +106,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            if (_needsCompany)
+            if (_needsMoreInfo)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
@@ -111,13 +115,13 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.errorColor.withOpacity(0.4)),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: AppColors.errorColor, size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
+                    Icon(Icons.warning_amber_rounded, color: AppColors.errorColor, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
                       child: Text(
-                        '商品登録時に自動作成されたブランドです。会社名が未入力です。',
+                        '未入力の項目があります。',
                         style: TextStyle(fontSize: 12, color: AppColors.errorColor),
                       ),
                     ),
@@ -134,6 +138,8 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
               controller: _companyController,
               decoration: CommonWidgets.buildInputDecoration('会社名', context: context),
             ),
+            const SizedBox(height: 16),
+            UrlInputField(controller: _urlController, label: '公式サイトURL'),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _isSaving ? null : _save,

@@ -32,9 +32,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   late final TextEditingController _brandNameController;
   late final TextEditingController _priceController;
   late final TextEditingController _expiryController;
-  late final TextEditingController _image1Controller;
-  late final TextEditingController _image2Controller;
-  late final TextEditingController _image3Controller;
+  late final List<TextEditingController> _imageControllers;
   late final TextEditingController _urlController;
   late final TextEditingController _descriptionController;
 
@@ -60,11 +58,21 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
       text: item?['item_price'] != null ? CommonWidgets.formatCurrency(item!['item_price']) : '',
     );
     _expiryController = TextEditingController(text: item?['item_expirydate']?.toString() ?? '');
-    _image1Controller = TextEditingController(text: item?['item_imageurl1'] ?? '');
-    _image2Controller = TextEditingController(text: item?['item_imageurl2'] ?? '');
-    _image3Controller = TextEditingController(text: item?['item_imageurl3'] ?? '');
     _urlController = TextEditingController(text: item?['item_url'] ?? '');
     _descriptionController = TextEditingController(text: item?['item_description'] ?? '');
+
+    final existingImages = [
+      item?['item_imageurl1'] as String?,
+      item?['item_imageurl2'] as String?,
+      item?['item_imageurl3'] as String?,
+    ];
+    // 既に入っている枚数分は表示、未入力の新規作成時は1枠だけ表示する。
+    var visibleImageCount = existingImages.lastIndexWhere((v) => v != null && v.isNotEmpty) + 1;
+    if (visibleImageCount < 1) visibleImageCount = 1;
+    _imageControllers = List.generate(
+      visibleImageCount,
+      (i) => TextEditingController(text: existingImages[i] ?? ''),
+    );
 
     final category = item?['item_category'] as String?;
     if (category != null && category.isNotEmpty) {
@@ -104,12 +112,36 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     _brandNameController.dispose();
     _priceController.dispose();
     _expiryController.dispose();
-    _image1Controller.dispose();
-    _image2Controller.dispose();
-    _image3Controller.dispose();
+    for (final c in _imageControllers) {
+      c.dispose();
+    }
     _urlController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Map<String, dynamic> _collectData() {
+    final rawPrice = _priceController.text.replaceAll(',', '');
+    return {
+      'item_name': _nameController.text.trim(),
+      'item_category': _selectedGenres.join(','),
+      'item_price': int.tryParse(rawPrice) ?? 0,
+      'item_expirydate': int.tryParse(_expiryController.text),
+      'item_individualwrapping': _individualWrapping,
+      'item_roomtemperature': _roomTemperature,
+      'item_online': _online,
+      'item_imageurl1': _imageControllers.isNotEmpty && _imageControllers[0].text.trim().isNotEmpty
+          ? _imageControllers[0].text.trim()
+          : null,
+      'item_imageurl2': _imageControllers.length > 1 && _imageControllers[1].text.trim().isNotEmpty
+          ? _imageControllers[1].text.trim()
+          : null,
+      'item_imageurl3': _imageControllers.length > 2 && _imageControllers[2].text.trim().isNotEmpty
+          ? _imageControllers[2].text.trim()
+          : null,
+      'item_url': _urlController.text.trim(),
+      'item_description': _descriptionController.text.trim(),
+    };
   }
 
   Future<void> _save() async {
@@ -121,22 +153,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
           ? null
           : await AdminService.instance.getOrCreateBrandByName(brandName);
 
-      final rawPrice = _priceController.text.replaceAll(',', '');
-      final data = {
-        'item_name': _nameController.text.trim(),
-        'item_category': _selectedGenres.join(','),
-        'item_price': int.tryParse(rawPrice) ?? 0,
-        'item_expirydate': int.tryParse(_expiryController.text),
-        'item_individualwrapping': _individualWrapping,
-        'item_roomtemperature': _roomTemperature,
-        'item_online': _online,
-        'item_imageurl1': _image1Controller.text.trim().isEmpty ? null : _image1Controller.text.trim(),
-        'item_imageurl2': _image2Controller.text.trim().isEmpty ? null : _image2Controller.text.trim(),
-        'item_imageurl3': _image3Controller.text.trim().isEmpty ? null : _image3Controller.text.trim(),
-        'item_url': _urlController.text.trim(),
-        'item_description': _descriptionController.text.trim(),
-        'brand_id': brandId,
-      };
+      final data = {..._collectData(), 'brand_id': brandId};
 
       if (_isEditing) {
         final itemId = widget.initialItem!['item_id'].toString();
@@ -191,6 +208,20 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     }
   }
 
+  Future<void> _duplicate() async {
+    final duplicatedData = _collectData();
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ItemFormScreen(
+          initialItem: duplicatedData,
+          initialBrandName: _brandNameController.text,
+        ),
+      ),
+    );
+    if (changed == true && mounted) Navigator.pop(context, true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = _isEditing
@@ -205,8 +236,10 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
         iconTheme: IconThemeData(color: Theme.of(context).primaryColor),
         elevation: 0,
         actions: [
-          if (_isEditing)
+          if (_isEditing) ...[
+            IconButton(icon: const Icon(Icons.copy_outlined), tooltip: '複製して新規作成', onPressed: _duplicate),
             IconButton(icon: const Icon(Icons.delete_outline), onPressed: _delete),
+          ],
         ],
       ),
       body: Form(
@@ -226,18 +259,6 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
               context: context,
               selectedGenres: _selectedGenres,
               onSelectionChanged: (newSelection) => setState(() => _selectedGenres = newSelection),
-            ),
-            const SizedBox(height: 24),
-            CommonWidgets.buildOtherConditionSelector(
-              context: context,
-              individualWrapping: _individualWrapping,
-              roomTemperature: _roomTemperature,
-              online: _online,
-              onChanged: (w, r, o) => setState(() {
-                _individualWrapping = w;
-                _roomTemperature = r;
-                _online = o;
-              }),
             ),
             const SizedBox(height: 24),
             Row(
@@ -261,39 +282,39 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            TextFormField(
-              controller: _expiryController,
-              decoration: CommonWidgets.buildInputDecoration('賞味期限（日数）', context: context),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-            const SizedBox(height: 24),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            Row(
               children: [
-                const Text('画像', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blackLight)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _image1Controller,
-                  decoration: CommonWidgets.buildInputDecoration('画像URL 1', context: context),
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _expiryController,
+                    decoration: CommonWidgets.buildInputDecoration('賞味期限', context: context),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _image2Controller,
-                  decoration: CommonWidgets.buildInputDecoration('画像URL 2', context: context),
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _image3Controller,
-                  decoration: CommonWidgets.buildInputDecoration('画像URL 3', context: context),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Text('日', style: TextStyle(fontSize: 16, color: AppColors.blackLight, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            TextFormField(
-              controller: _urlController,
-              decoration: CommonWidgets.buildInputDecoration('購入URL', context: context),
+            CommonWidgets.buildOtherConditionSelector(
+              context: context,
+              individualWrapping: _individualWrapping,
+              roomTemperature: _roomTemperature,
+              online: _online,
+              onChanged: (w, r, o) => setState(() {
+                _individualWrapping = w;
+                _roomTemperature = r;
+                _online = o;
+              }),
             ),
+            const SizedBox(height: 24),
+            _buildImageFields(),
+            const SizedBox(height: 24),
+            UrlInputField(controller: _urlController, label: '外部サイトURL'),
             const SizedBox(height: 24),
             TextFormField(
               controller: _descriptionController,
@@ -305,7 +326,6 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
             ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
-                foregroundColor: AppColors.blackDark,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
@@ -313,13 +333,38 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('保存', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                  : const Text('保存', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildImageFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('画像', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blackLight)),
+        const SizedBox(height: 8),
+        for (int i = 0; i < _imageControllers.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          UrlInputField(controller: _imageControllers[i], label: '画像URL ${i + 1}'),
+        ],
+        if (_imageControllers.length < 3) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _imageControllers.add(TextEditingController())),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('画像URLを追加'),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
