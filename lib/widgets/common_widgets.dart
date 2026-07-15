@@ -46,7 +46,7 @@ class CommonWidgets {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'ジャンル',
+          'カテゴリー',
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.blackLight),
         ),
         const SizedBox(height: 8),

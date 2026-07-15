@@ -4,7 +4,7 @@ import 'package:admin_app/services/admin_service.dart';
 import 'package:admin_app/view/item/item_form_screen.dart';
 
 /// クラスタ内のuseritem候補を目視比較し、採用する値を選んでitemへ昇格させる画面。
-/// ここでは useritem テーブルへの書き込みは一切行わない（読み取りのみ）。
+/// 昇格確定時にuseritem.item_idを紐づける以外、useritemの項目は変更しない。
 class UseritemMergeDetailScreen extends StatefulWidget {
   final List<Map<String, dynamic>> cluster;
 

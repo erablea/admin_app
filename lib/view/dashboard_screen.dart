@@ -3,6 +3,7 @@ import 'package:admin_app/main.dart';
 import 'package:admin_app/services/admin_service.dart';
 import 'package:admin_app/view/brand/brand_list_screen.dart';
 import 'package:admin_app/view/item/item_list_screen.dart';
+import 'package:admin_app/view/item/item_order_screen.dart';
 import 'package:admin_app/view/merge/useritem_merge_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -31,6 +32,16 @@ class DashboardScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ItemListScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DashboardTile(
+            icon: Icons.reorder,
+            title: 'home表示順の設定',
+            subtitle: 'alamode_appのhome画面での商品表示順を並び替え',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ItemOrderScreen()),
             ),
           ),
           const SizedBox(height: 12),

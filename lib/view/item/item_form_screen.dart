@@ -11,8 +11,9 @@ class ItemFormScreen extends StatefulWidget {
   final String? initialBrandName;
 
   /// 統合作業(useritemの昇格)経由でこの画面が開かれた場合、
-  /// 保存成功時にこれらのuseritem_idをuseritem_reviewへ記録する。
-  /// useritem自体には一切書き込まない。
+  /// 保存成功時にこれらのuseritem_idをuseritem_reviewへ記録し、
+  /// 対応するuseritem.item_idも新しいitem_idに更新する(それ以外の
+  /// useritemの項目には一切触れない)。
   final List<String>? promoteFromUseritemIds;
 
   const ItemFormScreen({
@@ -35,11 +36,14 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   late final List<TextEditingController> _imageControllers;
   late final TextEditingController _urlController;
   late final TextEditingController _descriptionController;
+  late final TextEditingController _copyrightController;
 
   Set<String> _selectedGenres = {};
   bool? _individualWrapping;
   bool? _roomTemperature;
   bool? _online;
+  bool _licenseStatus = false;
+  DateTime? _permissionDate;
 
   List<Map<String, dynamic>> _brandSuggestions = [];
   bool _isSaving = false;
@@ -60,6 +64,12 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     _expiryController = TextEditingController(text: item?['item_expirydate']?.toString() ?? '');
     _urlController = TextEditingController(text: item?['item_url'] ?? '');
     _descriptionController = TextEditingController(text: item?['item_description'] ?? '');
+    _copyrightController = TextEditingController(text: item?['copyright'] ?? '');
+    _licenseStatus = item?['license_status'] == true;
+    final permissionDateStr = item?['permission_date'] as String?;
+    if (permissionDateStr != null && permissionDateStr.isNotEmpty) {
+      _permissionDate = DateTime.tryParse(permissionDateStr);
+    }
 
     final existingImages = [
       item?['item_imageurl1'] as String?,
@@ -117,6 +127,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     }
     _urlController.dispose();
     _descriptionController.dispose();
+    _copyrightController.dispose();
     super.dispose();
   }
 
@@ -141,6 +152,11 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
           : null,
       'item_url': _urlController.text.trim(),
       'item_description': _descriptionController.text.trim(),
+      'license_status': _licenseStatus,
+      'permission_date': _permissionDate != null
+          ? '${_permissionDate!.year.toString().padLeft(4, '0')}-${_permissionDate!.month.toString().padLeft(2, '0')}-${_permissionDate!.day.toString().padLeft(2, '0')}'
+          : null,
+      'copyright': _copyrightController.text.trim(),
     };
   }
 
@@ -321,6 +337,48 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
               decoration: CommonWidgets.buildInputDecoration('商品説明', context: context),
               minLines: 3,
               maxLines: 5,
+            ),
+            const SizedBox(height: 30),
+            const Divider(),
+            const SizedBox(height: 8),
+            const Text(
+              '管理者用情報（alamode_appには表示されません）',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.blackLight),
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('公式許諾を得ている'),
+              value: _licenseStatus,
+              onChanged: (v) => setState(() => _licenseStatus = v),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _permissionDate ?? DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) setState(() => _permissionDate = picked);
+              },
+              child: InputDecorator(
+                decoration: CommonWidgets.buildInputDecoration('許諾取得日', context: context),
+                child: Text(
+                  _permissionDate != null
+                      ? '${_permissionDate!.year}/${_permissionDate!.month}/${_permissionDate!.day}'
+                      : '未設定',
+                  style: TextStyle(
+                    color: _permissionDate != null ? AppColors.blackDark : AppColors.blackLight,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _copyrightController,
+              decoration: CommonWidgets.buildInputDecoration('コピーライト表記', context: context),
             ),
             const SizedBox(height: 30),
             ElevatedButton(
