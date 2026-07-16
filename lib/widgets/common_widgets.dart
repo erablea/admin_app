@@ -96,10 +96,12 @@ class CommonWidgets {
   }
 
   // 3状態(unknown/yes/no)の条件チップ。item側のカラムはboolean(null許容)を想定。
+  // alamode_app(memo.dart)の表記と統一している。
   static const Map<String, Map<String, String>> conditionLabels = {
     '個包装': {'unknown': '個包装', 'yes': '個包装あり', 'no': '個包装なし'},
     '常温': {'unknown': '常温', 'yes': '常温保存', 'no': '要冷蔵・冷凍'},
     'オンライン購入': {'unknown': 'オンライン購入', 'yes': 'オンライン購入可', 'no': 'オンライン購入不可'},
+    '洋酒': {'unknown': '洋酒', 'yes': '洋酒不使用', 'no': '洋酒使用'},
   };
 
   static String stateFromBool(bool? value) {
@@ -187,7 +189,8 @@ class CommonWidgets {
     required bool? individualWrapping,
     required bool? roomTemperature,
     required bool? online,
-    required Function(bool? individualWrapping, bool? roomTemperature, bool? online) onChanged,
+    required bool? alcohol,
+    required Function(bool? individualWrapping, bool? roomTemperature, bool? online, bool? alcohol) onChanged,
   }) {
     String cycle(String state) => state == 'unknown' ? 'yes' : (state == 'yes' ? 'no' : 'unknown');
 
@@ -204,21 +207,32 @@ class CommonWidgets {
             Expanded(
               child: buildConditionChip(context, '個包装', stateFromBool(individualWrapping), onTap: () {
                 final next = cycle(stateFromBool(individualWrapping));
-                onChanged(boolFromState(next), roomTemperature, online);
+                onChanged(boolFromState(next), roomTemperature, online, alcohol);
               }),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: buildConditionChip(context, '常温', stateFromBool(roomTemperature), onTap: () {
                 final next = cycle(stateFromBool(roomTemperature));
-                onChanged(individualWrapping, boolFromState(next), online);
+                onChanged(individualWrapping, boolFromState(next), online, alcohol);
+              }),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: buildConditionChip(context, 'オンライン購入', stateFromBool(online), onTap: () {
+                final next = cycle(stateFromBool(online));
+                onChanged(individualWrapping, roomTemperature, boolFromState(next), alcohol);
               }),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: buildConditionChip(context, 'オンライン購入', stateFromBool(online), onTap: () {
-                final next = cycle(stateFromBool(online));
-                onChanged(individualWrapping, roomTemperature, boolFromState(next));
+              child: buildConditionChip(context, '洋酒', stateFromBool(alcohol), onTap: () {
+                final next = cycle(stateFromBool(alcohol));
+                onChanged(individualWrapping, roomTemperature, online, boolFromState(next));
               }),
             ),
           ],
@@ -244,6 +258,7 @@ class CommonWidgets {
       item['item_individualwrapping'] != null,
       item['item_roomtemperature'] != null,
       item['item_online'] != null,
+      item['item_alcohol'] != null,
       (item['item_imageurl1'] as String?)?.trim().isNotEmpty == true ||
           (item['item_imageurl2'] as String?)?.trim().isNotEmpty == true ||
           (item['item_imageurl3'] as String?)?.trim().isNotEmpty == true,

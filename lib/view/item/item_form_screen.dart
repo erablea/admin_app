@@ -42,6 +42,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   bool? _individualWrapping;
   bool? _roomTemperature;
   bool? _online;
+  bool? _alcohol;
   bool _licenseStatus = false;
   DateTime? _permissionDate;
 
@@ -91,6 +92,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     _individualWrapping = _asBool(item?['item_individualwrapping']);
     _roomTemperature = _asBool(item?['item_roomtemperature']);
     _online = _asBool(item?['item_online']);
+    _alcohol = _asBool(item?['item_alcohol']);
 
     _loadBrandSuggestions();
     final brandId = item?['brand_id']?.toString();
@@ -141,6 +143,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
       'item_individualwrapping': _individualWrapping,
       'item_roomtemperature': _roomTemperature,
       'item_online': _online,
+      'item_alcohol': _alcohol,
       'item_imageurl1': _imageControllers.isNotEmpty && _imageControllers[0].text.trim().isNotEmpty
           ? _imageControllers[0].text.trim()
           : null,
@@ -321,10 +324,12 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
               individualWrapping: _individualWrapping,
               roomTemperature: _roomTemperature,
               online: _online,
-              onChanged: (w, r, o) => setState(() {
+              alcohol: _alcohol,
+              onChanged: (w, r, o, a) => setState(() {
                 _individualWrapping = w;
                 _roomTemperature = r;
                 _online = o;
+                _alcohol = a;
               }),
             ),
             const SizedBox(height: 24),
@@ -352,34 +357,46 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
               value: _licenseStatus,
               onChanged: (v) => setState(() => _licenseStatus = v),
             ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _permissionDate ?? DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null) setState(() => _permissionDate = picked);
-              },
-              child: InputDecorator(
-                decoration: CommonWidgets.buildInputDecoration('許諾取得日', context: context),
-                child: Text(
-                  _permissionDate != null
-                      ? '${_permissionDate!.year}/${_permissionDate!.month}/${_permissionDate!.day}'
-                      : '未設定',
-                  style: TextStyle(
-                    color: _permissionDate != null ? AppColors.blackDark : AppColors.blackLight,
+            if (_licenseStatus) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _permissionDate ?? DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => _permissionDate = picked);
+                },
+                child: InputDecorator(
+                  decoration: CommonWidgets.buildInputDecoration(
+                    '許諾取得日',
+                    context: context,
+                    suffixIcon: _permissionDate != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 20),
+                            tooltip: 'クリア',
+                            onPressed: () => setState(() => _permissionDate = null),
+                          )
+                        : null,
+                  ),
+                  child: Text(
+                    _permissionDate != null
+                        ? '${_permissionDate!.year}/${_permissionDate!.month}/${_permissionDate!.day}'
+                        : '未設定',
+                    style: TextStyle(
+                      color: _permissionDate != null ? AppColors.blackDark : AppColors.blackLight,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _copyrightController,
-              decoration: CommonWidgets.buildInputDecoration('コピーライト表記', context: context),
-            ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _copyrightController,
+                decoration: CommonWidgets.buildInputDecoration('コピーライト表記', context: context),
+              ),
+            ],
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: _isSaving ? null : _save,
