@@ -150,33 +150,49 @@ class CommonWidgets {
         isDashed = true;
     }
 
+    // 高さを常に固定し、ラベルの長さでボタンの高さや隣のボタンの位置が
+    // ずれないようにする。
     final chipContent = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Center(
+      child: SizedBox(
+        height: 18,
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(width: 17, child: showIcon ? Icon(Icons.check, size: 13, color: primary) : null),
-            Text(label, style: TextStyle(fontSize: 13, color: textColor)),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: textColor),
+              ),
+            ),
           ],
         ),
       ),
     );
 
+    // 枠線は常にCustomPaintで描画する。BoxDecoration.borderを状態によって
+    // 付け外しすると、Containerの暗黙のpaddingが変わりタップのたびに高さが
+    // ガクッと変化してしまうため。同様の理由でContainer自体もExpandedの
+    // 幅いっぱいに固定し、ラベルの長さでボタンサイズが変わらないようにする。
     final chip = Stack(
       children: [
         Container(
+          width: double.infinity,
+          clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(20),
-            border: isDashed ? null : Border.all(color: borderColor, width: 1),
           ),
           child: chipContent,
         ),
-        if (isDashed)
-          Positioned.fill(
-            child: CustomPaint(painter: _DashedBorderPainter(color: borderColor, radius: 20)),
-          ),
+        Positioned.fill(
+          child: CustomPaint(painter: _DashedBorderPainter(color: borderColor, radius: 20, dashed: isDashed)),
+        ),
       ],
     );
 
@@ -376,7 +392,8 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
 class _DashedBorderPainter extends CustomPainter {
   final Color color;
   final double radius;
-  const _DashedBorderPainter({required this.color, required this.radius});
+  final bool dashed;
+  const _DashedBorderPainter({required this.color, required this.radius, this.dashed = true});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -384,12 +401,16 @@ class _DashedBorderPainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
-    const dashLen = 4.0;
-    const gapLen = 3.0;
     final rrect = RRect.fromRectAndRadius(
       Rect.fromLTWH(0.5, 0.5, size.width - 1, size.height - 1),
       Radius.circular(radius),
     );
+    if (!dashed) {
+      canvas.drawRRect(rrect, paint);
+      return;
+    }
+    const dashLen = 4.0;
+    const gapLen = 3.0;
     final path = Path()..addRRect(rrect);
     final metrics = path.computeMetrics();
     for (final metric in metrics) {
@@ -402,5 +423,5 @@ class _DashedBorderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DashedBorderPainter old) => old.color != color;
+  bool shouldRepaint(_DashedBorderPainter old) => old.color != color || old.dashed != dashed;
 }
