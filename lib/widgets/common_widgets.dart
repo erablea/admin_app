@@ -170,6 +170,7 @@ class CommonWidgets {
                 style: TextStyle(fontSize: 13, color: textColor),
               ),
             ),
+            const SizedBox(width: 17),
           ],
         ),
       ),
