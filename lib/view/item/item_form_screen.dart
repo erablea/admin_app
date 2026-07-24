@@ -31,7 +31,8 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _brandNameController;
-  late final TextEditingController _priceController;
+  late final TextEditingController _priceExTaxController;
+  late final TextEditingController _price10PercentController;
   late final TextEditingController _expiryController;
   late final List<TextEditingController> _imageControllers;
   late final TextEditingController _urlController;
@@ -43,7 +44,10 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   bool? _roomTemperature;
   bool? _online;
   bool? _alcohol;
+  bool? _limited;
+  bool? _physicalStore;
   bool _licenseStatus = false;
+  bool _showOnHome = true;
   DateTime? _permissionDate;
 
   List<Map<String, dynamic>> _brandSuggestions = [];
@@ -59,14 +63,20 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     final item = widget.initialItem;
     _nameController = TextEditingController(text: item?['item_name'] ?? '');
     _brandNameController = TextEditingController(text: widget.initialBrandName ?? '');
-    _priceController = TextEditingController(
+    _priceExTaxController = TextEditingController(
       text: item?['item_price'] != null ? CommonWidgets.formatCurrency(item!['item_price']) : '',
+    );
+    _price10PercentController = TextEditingController(
+      text: item?['item_price10percent'] != null
+          ? CommonWidgets.formatCurrency(item!['item_price10percent'])
+          : '',
     );
     _expiryController = TextEditingController(text: item?['item_expirydate']?.toString() ?? '');
     _urlController = TextEditingController(text: item?['item_url'] ?? '');
     _descriptionController = TextEditingController(text: item?['item_description'] ?? '');
     _copyrightController = TextEditingController(text: item?['copyright'] ?? '');
     _licenseStatus = item?['license_status'] == true;
+    _showOnHome = item?['item_show_on_home'] != false;
     final permissionDateStr = item?['permission_date'] as String?;
     if (permissionDateStr != null && permissionDateStr.isNotEmpty) {
       _permissionDate = DateTime.tryParse(permissionDateStr);
@@ -93,6 +103,8 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     _roomTemperature = _asBool(item?['item_roomtemperature']);
     _online = _asBool(item?['item_online']);
     _alcohol = _asBool(item?['item_alcohol']);
+    _limited = _asBool(item?['item_limited']);
+    _physicalStore = _asBool(item?['item_physicalstore']);
 
     _loadBrandSuggestions();
     final brandId = item?['brand_id']?.toString();
@@ -122,7 +134,8 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   void dispose() {
     _nameController.dispose();
     _brandNameController.dispose();
-    _priceController.dispose();
+    _priceExTaxController.dispose();
+    _price10PercentController.dispose();
     _expiryController.dispose();
     for (final c in _imageControllers) {
       c.dispose();
@@ -134,16 +147,21 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   }
 
   Map<String, dynamic> _collectData() {
-    final rawPrice = _priceController.text.replaceAll(',', '');
+    final rawPriceExTax = _priceExTaxController.text.replaceAll(',', '');
+    final rawPrice10Percent = _price10PercentController.text.replaceAll(',', '');
     return {
       'item_name': _nameController.text.trim(),
       'item_category': _selectedGenres.join(','),
-      'item_price': int.tryParse(rawPrice) ?? 0,
+      'item_price': int.tryParse(rawPriceExTax),
+      'item_price10percent': int.tryParse(rawPrice10Percent),
       'item_expirydate': int.tryParse(_expiryController.text),
       'item_individualwrapping': _individualWrapping,
       'item_roomtemperature': _roomTemperature,
       'item_online': _online,
       'item_alcohol': _alcohol,
+      'item_limited': _limited,
+      'item_physicalstore': _physicalStore,
+      'item_show_on_home': _showOnHome,
       'item_imageurl1': _imageControllers.isNotEmpty && _imageControllers[0].text.trim().isNotEmpty
           ? _imageControllers[0].text.trim()
           : null,
@@ -285,8 +303,29 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
                 Expanded(
                   flex: 2,
                   child: TextFormField(
-                    controller: _priceController,
-                    decoration: CommonWidgets.buildInputDecoration('金額', context: context),
+                    controller: _priceExTaxController,
+                    decoration: CommonWidgets.buildInputDecoration('税抜価格', context: context),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      ThousandsSeparatorInputFormatter(),
+                    ],
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Text('円', style: TextStyle(fontSize: 16, color: AppColors.blackLight, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextFormField(
+                    controller: _price10PercentController,
+                    decoration: CommonWidgets.buildInputDecoration('価格（税込10%）', context: context),
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
@@ -332,6 +371,8 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
                 _alcohol = a;
               }),
             ),
+            const SizedBox(height: 16),
+            _buildLimitedAndPhysicalStoreSelector(),
             const SizedBox(height: 24),
             _buildImageFields(),
             const SizedBox(height: 24),
@@ -351,6 +392,12 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.blackLight),
             ),
             const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('homeに表示する'),
+              value: _showOnHome,
+              onChanged: (v) => setState(() => _showOnHome = v),
+            ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('公式許諾を得ている'),
@@ -415,6 +462,38 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLimitedAndPhysicalStoreSelector() {
+    return Row(
+      children: [
+        Expanded(
+          child: CommonWidgets.buildConditionChip(
+            context,
+            '限定',
+            CommonWidgets.stateFromBool(_limited),
+            onTap: () => setState(() {
+              _limited = CommonWidgets.boolFromState(
+                _limited == null ? 'yes' : (_limited == true ? 'no' : 'unknown'),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: CommonWidgets.buildConditionChip(
+            context,
+            '実店舗',
+            CommonWidgets.stateFromBool(_physicalStore),
+            onTap: () => setState(() {
+              _physicalStore = CommonWidgets.boolFromState(
+                _physicalStore == null ? 'yes' : (_physicalStore == true ? 'no' : 'unknown'),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 

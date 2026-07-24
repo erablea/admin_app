@@ -56,7 +56,7 @@ class _UseritemMergeDetailScreenState extends State<UseritemMergeDetailScreen> {
     final initialItem = {
       'item_name': _merged['useritem_name'],
       'item_category': _merged['useritem_category'],
-      'item_price': _merged['useritem_price'],
+      'item_price10percent': _merged['useritem_price'],
       'item_url': _merged['useritem_URL'],
       'item_imageurl1': _merged['useritem_image'],
       'item_individualwrapping': _merged['useritem_individualwrapping'],

@@ -77,7 +77,7 @@ class _ItemListScreenState extends State<ItemListScreen> {
                                 CommonWidgets.buildCompletionBadge(percent),
                               ],
                             ),
-                            subtitle: Text('¥${CommonWidgets.formatCurrency(item['item_price'] ?? 0)}'),
+                            subtitle: Text('¥${CommonWidgets.formatCurrency(item['item_price10percent'] ?? 0)}'),
                             onTap: () => _openForm(item),
                           );
                         },

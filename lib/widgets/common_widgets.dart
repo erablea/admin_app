@@ -102,6 +102,8 @@ class CommonWidgets {
     '常温': {'unknown': '常温', 'yes': '常温保存', 'no': '要冷蔵・冷凍'},
     'オンライン購入': {'unknown': 'オンライン購入', 'yes': 'オンライン購入可', 'no': 'オンライン購入不可'},
     '洋酒': {'unknown': '洋酒', 'yes': '洋酒不使用', 'no': '洋酒使用'},
+    '限定': {'unknown': '限定', 'yes': '数量・期間限定', 'no': '通常販売'},
+    '実店舗': {'unknown': '実店舗', 'yes': '実店舗あり', 'no': 'オンライン限定'},
   };
 
   static String stateFromBool(bool? value) {
@@ -270,12 +272,15 @@ class CommonWidgets {
       (item['item_name'] as String?)?.trim().isNotEmpty == true,
       item['brand_id'] != null,
       (item['item_category'] as String?)?.trim().isNotEmpty == true,
-      (item['item_price'] as num?) != null && (item['item_price'] as num) > 0,
+      (item['item_price10percent'] as num?) != null && (item['item_price10percent'] as num) > 0,
+      item['item_price'] != null,
       item['item_expirydate'] != null,
       item['item_individualwrapping'] != null,
       item['item_roomtemperature'] != null,
       item['item_online'] != null,
       item['item_alcohol'] != null,
+      item['item_limited'] != null,
+      item['item_physicalstore'] != null,
       (item['item_imageurl1'] as String?)?.trim().isNotEmpty == true ||
           (item['item_imageurl2'] as String?)?.trim().isNotEmpty == true ||
           (item['item_imageurl3'] as String?)?.trim().isNotEmpty == true,
